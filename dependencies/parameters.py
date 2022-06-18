@@ -1,0 +1,1 @@
+H3_RESOLUTION = 10

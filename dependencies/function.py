@@ -2,11 +2,17 @@ from typing import List
 import h3
 import numpy as np
 
+from parameters import *
+import google_api as google
+
 
 class Location:
     def __init__(self, lat: float, lng: float) -> None:
         self.lat = lat
         self.lng = lng
+
+    def to_string(self):
+        return f"{self.lat},{self.lng}"
 
 
 class Gadjo:
@@ -39,3 +45,23 @@ class GadjosTeam:
         lat_avg = np.arctan2(z_avg, hyp_avg)
 
         return Location(lat_avg * 180 / np.pi, lng_avg * 180 / np.pi)
+
+    def score_meet_up(self, meet_up: Location) -> float:
+        distance_matrix = google.distance_matrix(
+            [meet_up], [gadjo.location for gadjo in self.gadjos]
+        )
+        score = 0
+        for row in distance_matrix["rows"]:
+            score += int(row["elements"][0]["duration"]["value"])
+        return score / len(self.gadjos)
+
+    def find_best_meet_up(self) -> Location:
+
+        distance_center = self.distance_center()
+        center_hex = h3.geo_to_h3(
+            distance_center.lat, distance_center.lng, H3_RESOLUTION
+        )
+        viewed_hex = {center_hex: 1}
+        while True:
+            pass
+        pass

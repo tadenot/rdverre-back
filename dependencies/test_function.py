@@ -1,13 +1,16 @@
 from function import *
+from constants import *
 
 
 def main():
-    chay = Gadjo("Chay", Location(48.861838, 2.278190))
-    ad = Gadjo("Ad", Location(48.856222, 2.364736))
+    # Test distance_center
+    distance_center = team.distance_center()
+    print(distance_center.lat)
+    print(distance_center.lng)
 
-    team = GadjosTeam([chay, ad])
-    print(team.distance_center().lat)
-    print(team.distance_center().lng)
+    # Test score meet up
+    score = team.score_meet_up(distance_center)
+    print(score)
 
 
 if __name__ == "__main__":
