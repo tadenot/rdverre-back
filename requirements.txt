@@ -2,3 +2,4 @@ numpy
 h3
 python-dotenv
 requests
+tqdm

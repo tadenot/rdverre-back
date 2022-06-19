@@ -23,7 +23,7 @@ def distance_matrix(destinations, origins):
         params={
             "destinations": destinations_str,
             "origins": origins_str,
-            "mode": "TRANSIT",
+            "mode": "transit",
             "key": GOOGLE_API_KEY,
         },
     )

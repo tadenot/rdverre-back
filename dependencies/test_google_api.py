@@ -1,5 +1,5 @@
 from google_api import *
-from constants import *
+from test_constants import *
 from pprint import pprint
 
 
