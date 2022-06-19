@@ -2,6 +2,7 @@ from typing import List, Tuple
 import h3
 import numpy as np
 from pprint import pprint
+from pydantic import BaseModel
 from tqdm import tqdm
 import json
 
@@ -9,24 +10,21 @@ from .parameters import *
 from .google_api import distance_matrix
 
 
-class Location:
-    def __init__(self, lat: float, lng: float) -> None:
-        self.lat = lat
-        self.lng = lng
+class Location(BaseModel):
+    lat: float
+    lng: float
 
     def to_string(self):
         return f"{self.lat},{self.lng}"
 
 
-class Gadjo:
-    def __init__(self, name: str, location: Location) -> None:
-        self.name = name
-        self.location = location
+class Gadjo(BaseModel):
+    name: str
+    location: Location
 
 
-class GadjosTeam:
-    def __init__(self, gadjos: List[Gadjo]) -> None:
-        self.gadjos = gadjos
+class GadjosTeam(BaseModel):
+    gadjos: List[Gadjo]
 
     def distance_center(self) -> Location:
         x_avg = 0
