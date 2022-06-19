@@ -59,9 +59,8 @@ class GadjosTeam:
                 scores.append(int(row["elements"][0]["duration"]["value"]))
             except KeyError:
                 print(row)
+                scores.append(np.inf)
                 pass
-        if len(scores) == 0:
-            return np.inf
         return sum(scores) / len(self.gadjos) + ALPHA * (max(scores) - min(scores))
 
     def find_best_meet_up1(self) -> Tuple[Location, float]:
