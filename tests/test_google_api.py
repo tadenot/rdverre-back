@@ -1,6 +1,10 @@
-from google_api import *
-from test_constants import *
 from pprint import pprint
+import sys
+
+sys.path.append("..")
+
+from dependencies.google_api import *
+from .test_constants import *
 
 
 def main():

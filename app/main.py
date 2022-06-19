@@ -1,7 +1,10 @@
 from typing import Tuple
 from fastapi import FastAPI
+import sys
 
-from ..dependencies.function import GadjosTeam, Location
+sys.path.append("..")
+
+from dependencies.function import GadjosTeam, Location
 
 app = FastAPI()
 

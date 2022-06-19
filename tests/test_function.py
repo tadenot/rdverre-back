@@ -1,5 +1,9 @@
-from function import *
-from test_constants import *
+import sys
+
+sys.path.append("..")
+
+from dependencies.function import *
+from .test_constants import *
 
 
 def main():

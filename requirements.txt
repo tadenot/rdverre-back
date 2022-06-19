@@ -4,3 +4,4 @@ python-dotenv
 requests
 tqdm
 fastapi
+uvicorn

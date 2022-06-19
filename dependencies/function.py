@@ -5,8 +5,8 @@ from pprint import pprint
 from tqdm import tqdm
 import json
 
-from parameters import *
-import google_api as google
+from .parameters import *
+from .google_api import distance_matrix
 
 
 class Location:
@@ -50,7 +50,7 @@ class GadjosTeam:
         return Location(lat_avg * 180 / np.pi, lng_avg * 180 / np.pi)
 
     def score_meet_up(self, meet_up: Location) -> float:
-        distance_matrix = google.distance_matrix(
+        distance_matrix = distance_matrix(
             [meet_up], [gadjo.location for gadjo in self.gadjos]
         )
         scores = []
