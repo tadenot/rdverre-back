@@ -1,6 +1,8 @@
+from typing import List
 from dotenv import load_dotenv
 import os
 import requests
+from loguru import logger
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -28,5 +30,26 @@ def distance_matrix(destinations, origins):
         },
     )
     if response.status_code != 200:
-        print(f"Error {response.status_code}{response.json()}")
+        logger.error(f"Error {response.status_code}{response.json()}")
+        return
+    return response.json()
+
+def geocoding(address: str):
+    response = requests.get(
+        url="https://maps.googleapis.com/maps/api/geocode/json",
+        params={"address":address, "key": GOOGLE_API_KEY,}
+    )
+    if response.status_code !=200:
+        logger.error(f"Error geocoding address {address}")
+        return
+    return response.json()
+
+def places_autocomplete(address: str) -> List:
+    response = requests.get(
+        url="https://maps.googleapis.com/maps/api/place/autocomplete/json", 
+        params={"input": address, "key": GOOGLE_API_KEY}
+    )
+    if response.status_code != 200:
+        logger.error(f"Error places autocomplete {address}")
+        return []
     return response.json()

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import h3
 import numpy as np
 from pprint import pprint
@@ -7,15 +7,20 @@ from tqdm import tqdm
 import json
 
 from .parameters import *
-from .google_api import distance_matrix
+import app.dependencies.google_api as gmaps
 
-
-class Location(BaseModel):
+class LatLng(BaseModel):
     lat: float
     lng: float
 
-    def to_string(self):
-        return f"{self.lat},{self.lng}"
+class Location(BaseModel):
+    address: Optional[str]
+    coords: Optional[LatLng]
+
+    def get_coords(self) -> Optional[LatLng]:
+        if self.coords is None and not self.address is None:
+            self.coords = gmaps.geocoding(self.address)
+        return self.coords
 
 
 class Gadjo(BaseModel):
@@ -26,13 +31,16 @@ class Gadjo(BaseModel):
 class GadjosTeam(BaseModel):
     gadjos: List[Gadjo]
 
-    def distance_center(self) -> Location:
+    def distance_center(self) -> LatLng:
         x_avg = 0
         y_avg = 0
         z_avg = 0
         for gadjo in self.gadjos:
-            lat_rad = gadjo.location.lat * np.pi / 180
-            lng_rad = gadjo.location.lng * np.pi / 180
+            gadjo_coords = gadjo.location.get_coords()
+            if not gadjo_coords:
+                continue
+            lat_rad = gadjo_coords.lat * np.pi / 180
+            lng_rad = gadjo_coords.lng * np.pi / 180
             x_avg += np.cos(lat_rad) * np.cos(lng_rad)
             y_avg += np.cos(lat_rad) * np.sin(lng_rad)
             z_avg += np.sin(lat_rad)
@@ -45,12 +53,14 @@ class GadjosTeam(BaseModel):
         hyp_avg = np.sqrt(x_avg * x_avg + y_avg * y_avg)
         lat_avg = np.arctan2(z_avg, hyp_avg)
 
-        return Location(lat_avg * 180 / np.pi, lng_avg * 180 / np.pi)
+        return LatLng(lat=lat_avg * 180 / np.pi, lng=lng_avg * 180 / np.pi)
 
-    def score_meet_up(self, meet_up: Location) -> float:
-        distance_matrix = distance_matrix(
+    def score_meet_up(self, meet_up: LatLng) -> float:
+        distance_matrix = gmaps.distance_matrix(
             [meet_up], [gadjo.location for gadjo in self.gadjos]
         )
+        if distance_matrix is None:
+            return np.inf
         scores = []
         for row in distance_matrix["rows"]:
             try:
@@ -61,7 +71,7 @@ class GadjosTeam(BaseModel):
                 pass
         return sum(scores) / len(self.gadjos) + ALPHA * (max(scores) - min(scores))
 
-    def find_best_meet_up1(self) -> Tuple[Location, float]:
+    def find_best_meet_up1(self) -> Tuple[LatLng, float]:
         distance_center = self.distance_center()
         best_hex = h3.geo_to_h3(
             distance_center.lat, distance_center.lng, H3_RESOLUTION_END
@@ -75,7 +85,7 @@ class GadjosTeam(BaseModel):
             for hex in hex_ring:
                 hex_score = viewed_hexagons.get(hex)
                 if not hex_score:
-                    hex_score = self.score_meet_up(Location(*h3.h3_to_geo(hex)))
+                    hex_score = self.score_meet_up(LatLng(*h3.h3_to_geo(hex)))
                     viewed_hexagons[hex] = hex_score
                 if hex_score < viewed_hexagons[best_hex]:
                     best_hex = hex
@@ -83,33 +93,34 @@ class GadjosTeam(BaseModel):
 
         with open("rdverre_scores.json", "w") as f:
             json.dump(viewed_hexagons, f)
-        return Location(*h3.h3_to_geo(best_hex)), viewed_hexagons[best_hex]
+        return LatLng(*h3.h3_to_geo(best_hex)), viewed_hexagons[best_hex]
 
-    def find_best_meet_up2(self) -> Tuple[Location, float]:
+    def find_best_meet_up2(self) -> Tuple[LatLng, float]:
         distance_center = self.distance_center()
         center_hex = h3.geo_to_h3(
             distance_center.lat, distance_center.lng, H3_RESOLUTION_END
         )
         viewed_hexagons = {}
         for hex in tqdm(h3.k_ring(center_hex, 20)):
-            viewed_hexagons[hex] = self.score_meet_up(Location(*h3.h3_to_geo(hex)))
+            viewed_hexagons[hex] = self.score_meet_up(LatLng(*h3.h3_to_geo(hex)))
         with open("rdverre_scores.json", "w") as f:
             json.dump(viewed_hexagons, f)
         best_hex = min(viewed_hexagons, key=viewed_hexagons.get)
-        return Location(*h3.h3_to_geo(best_hex)), viewed_hexagons[best_hex]
+        return LatLng(*h3.h3_to_geo(best_hex)), viewed_hexagons[best_hex]
 
-    def find_best_meet_up3(self) -> Tuple[Location, float]:
+    def find_best_meet_up3(self) -> Tuple[LatLng, float]:
         distance_center = self.distance_center()
         center_hex = h3.geo_to_h3(
             distance_center.lat, distance_center.lng, H3_RESOLUTION_START
         )
         viewed_hexagons = {}
+        best_score = np.inf
         for res in tqdm(range(H3_RESOLUTION_START + 1, H3_RESOLUTION_END + 1)):
             hexagons_to_explore = h3.h3_to_children(center_hex, res)
             best_score = np.inf
             best_hex = next(iter(hexagons_to_explore))
             for hex in hexagons_to_explore:
-                hex_score = self.score_meet_up(Location(*h3.h3_to_geo(hex)))
+                hex_score = self.score_meet_up(LatLng(*h3.h3_to_geo(hex)))
                 viewed_hexagons[hex] = hex_score
                 if hex_score < best_score:
                     best_score = hex_score
@@ -118,4 +129,4 @@ class GadjosTeam(BaseModel):
 
         with open("rdverre_scores.json", "w") as f:
             json.dump(viewed_hexagons, f)
-        return Location(*h3.h3_to_geo(best_hex)), best_score
+        return LatLng(*h3.h3_to_geo(best_hex)), best_score
