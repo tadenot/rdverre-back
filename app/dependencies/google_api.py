@@ -40,9 +40,10 @@ def geocoding(address: str):
         params={"address":address, "key": GOOGLE_API_KEY,}
     )
     if response.status_code !=200:
-        logger.error(f"Error geocoding address {address}")
+        logger.error(f"Error geocoding address {address} : {response.status_code} {response.json()}")
         return
-    return response.json()
+    coords = response.json()["results"][0]["geometry"]["location"]
+    return coords
 
 def places_autocomplete(address: str) -> List:
     response = requests.get(

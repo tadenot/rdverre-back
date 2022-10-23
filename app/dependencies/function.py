@@ -5,6 +5,7 @@ from pprint import pprint
 from pydantic import BaseModel
 from tqdm import tqdm
 import json
+from loguru import logger
 
 from .parameters import *
 import app.dependencies.google_api as gmaps
@@ -13,13 +14,16 @@ class LatLng(BaseModel):
     lat: float
     lng: float
 
+    def to_string(self):
+        return f"{self.lat},{self.lng}"
+
 class Location(BaseModel):
-    address: Optional[str]
-    coords: Optional[LatLng]
+    address: Optional[str] = None
+    coords: Optional[LatLng] = None
 
     def get_coords(self) -> Optional[LatLng]:
         if self.coords is None and not self.address is None:
-            self.coords = gmaps.geocoding(self.address)
+            self.coords = LatLng(**gmaps.geocoding(self.address))
         return self.coords
 
 
@@ -57,7 +61,7 @@ class GadjosTeam(BaseModel):
 
     def score_meet_up(self, meet_up: LatLng) -> float:
         distance_matrix = gmaps.distance_matrix(
-            [meet_up], [gadjo.location for gadjo in self.gadjos]
+            [meet_up], [gadjo.location.coords for gadjo in self.gadjos]
         )
         if distance_matrix is None:
             return np.inf
@@ -85,7 +89,8 @@ class GadjosTeam(BaseModel):
             for hex in hex_ring:
                 hex_score = viewed_hexagons.get(hex)
                 if not hex_score:
-                    hex_score = self.score_meet_up(LatLng(*h3.h3_to_geo(hex)))
+                    hex_coords = h3.h3_to_geo(hex)
+                    hex_score = self.score_meet_up(LatLng(lat=hex_coords[0], lng=hex_coords[1]))
                     viewed_hexagons[hex] = hex_score
                 if hex_score < viewed_hexagons[best_hex]:
                     best_hex = hex
@@ -93,7 +98,8 @@ class GadjosTeam(BaseModel):
 
         with open("rdverre_scores.json", "w") as f:
             json.dump(viewed_hexagons, f)
-        return LatLng(*h3.h3_to_geo(best_hex)), viewed_hexagons[best_hex]
+        best_hex_coords = h3.h3_to_geo(best_hex)
+        return LatLng(lat=best_hex_coords[0], lng=best_hex_coords[1]), viewed_hexagons[best_hex]
 
     def find_best_meet_up2(self) -> Tuple[LatLng, float]:
         distance_center = self.distance_center()
@@ -115,12 +121,14 @@ class GadjosTeam(BaseModel):
         )
         viewed_hexagons = {}
         best_score = np.inf
+        best_hex = ""
         for res in tqdm(range(H3_RESOLUTION_START + 1, H3_RESOLUTION_END + 1)):
             hexagons_to_explore = h3.h3_to_children(center_hex, res)
             best_score = np.inf
             best_hex = next(iter(hexagons_to_explore))
             for hex in hexagons_to_explore:
-                hex_score = self.score_meet_up(LatLng(*h3.h3_to_geo(hex)))
+                hex_coords = h3.h3_to_geo(hex)
+                hex_score = self.score_meet_up(LatLng(lat=hex_coords[0], lng=hex_coords[1]))
                 viewed_hexagons[hex] = hex_score
                 if hex_score < best_score:
                     best_score = hex_score
@@ -129,4 +137,5 @@ class GadjosTeam(BaseModel):
 
         with open("rdverre_scores.json", "w") as f:
             json.dump(viewed_hexagons, f)
-        return LatLng(*h3.h3_to_geo(best_hex)), best_score
+        best_hex_score = h3.h3_to_geo(best_hex)
+        return LatLng(lat=best_hex_score[0], lng=best_hex_score[1]), best_score

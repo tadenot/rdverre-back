@@ -2,8 +2,8 @@ import sys
 
 sys.path.append("..")
 
-from dependencies.function import *
-from .test_constants import *
+from app.dependencies.function import *
+from tests.test_constants import *
 
 
 def main():
@@ -17,7 +17,7 @@ def main():
     print(score)
 
     # Test find best meet up
-    best_meet_up, avg_transit_time = team.find_best_meet_up2()
+    best_meet_up, avg_transit_time = team.find_best_meet_up3()
     print(best_meet_up.lat)
     print(best_meet_up.lng)
     print(avg_transit_time / 60)
