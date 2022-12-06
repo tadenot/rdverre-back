@@ -5,3 +5,6 @@ requests
 tqdm
 fastapi
 uvicorn
+loguru
+black
+pylance
