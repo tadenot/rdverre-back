@@ -45,14 +45,14 @@ class GadjosTeam(BaseModel):
         hyp_avg = np.sqrt(x_avg * x_avg + y_avg * y_avg)
         lat_avg = np.arctan2(z_avg, hyp_avg)
 
-        return Location(lat_avg * 180 / np.pi, lng_avg * 180 / np.pi)
+        return Location(lat=lat_avg * 180 / np.pi, lng=lng_avg * 180 / np.pi)
 
     def score_meet_up(self, meet_up: Location) -> float:
-        distance_matrix = distance_matrix(
+        dist_matrix = distance_matrix(
             [meet_up], [gadjo.location for gadjo in self.gadjos]
         )
         scores = []
-        for row in distance_matrix["rows"]:
+        for row in dist_matrix["rows"]:
             try:
                 scores.append(int(row["elements"][0]["duration"]["value"]))
             except KeyError:
@@ -75,7 +75,8 @@ class GadjosTeam(BaseModel):
             for hex in hex_ring:
                 hex_score = viewed_hexagons.get(hex)
                 if not hex_score:
-                    hex_score = self.score_meet_up(Location(*h3.h3_to_geo(hex)))
+                    lat, lng = h3.h3_to_geo(hex)
+                    hex_score = self.score_meet_up(Location(lat=lat, lng=lng))
                     viewed_hexagons[hex] = hex_score
                 if hex_score < viewed_hexagons[best_hex]:
                     best_hex = hex
@@ -83,7 +84,8 @@ class GadjosTeam(BaseModel):
 
         with open("rdverre_scores.json", "w") as f:
             json.dump(viewed_hexagons, f)
-        return Location(*h3.h3_to_geo(best_hex)), viewed_hexagons[best_hex]
+        best_lat, best_lng = h3.h3_to_geo(best_hex)
+        return Location(lat=best_lat, lng=best_lng), viewed_hexagons[best_hex]
 
     def find_best_meet_up2(self) -> Tuple[Location, float]:
         distance_center = self.distance_center()
@@ -92,11 +94,14 @@ class GadjosTeam(BaseModel):
         )
         viewed_hexagons = {}
         for hex in tqdm(h3.k_ring(center_hex, 20)):
-            viewed_hexagons[hex] = self.score_meet_up(Location(*h3.h3_to_geo(hex)))
+            lat, lng = h3.h3_to_geo(hex)
+            viewed_hexagons[hex] = self.score_meet_up(Location(lat=lat, lng=lng))
         with open("rdverre_scores.json", "w") as f:
             json.dump(viewed_hexagons, f)
         best_hex = min(viewed_hexagons, key=viewed_hexagons.get)
-        return Location(*h3.h3_to_geo(best_hex)), viewed_hexagons[best_hex]
+        print(best_hex)
+        best_lat, best_lng = h3.h3_to_geo(best_hex)
+        return Location(lat=best_lat, lng=best_lng), viewed_hexagons[best_hex]
 
     def find_best_meet_up3(self) -> Tuple[Location, float]:
         distance_center = self.distance_center()
@@ -109,7 +114,8 @@ class GadjosTeam(BaseModel):
             best_score = np.inf
             best_hex = next(iter(hexagons_to_explore))
             for hex in hexagons_to_explore:
-                hex_score = self.score_meet_up(Location(*h3.h3_to_geo(hex)))
+                lat, lng = h3.h3_to_geo(hex)
+                hex_score = self.score_meet_up(Location(lat=lat, lng=lng))
                 viewed_hexagons[hex] = hex_score
                 if hex_score < best_score:
                     best_score = hex_score
@@ -118,4 +124,6 @@ class GadjosTeam(BaseModel):
 
         with open("rdverre_scores.json", "w") as f:
             json.dump(viewed_hexagons, f)
-        return Location(*h3.h3_to_geo(best_hex)), best_score
+
+        best_lat, best_lng = h3.h3_to_geo(best_hex)
+        return Location(lat=best_lat, lng=best_lng), best_score
